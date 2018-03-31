@@ -8,6 +8,7 @@ import * as moment from "moment";
 import * as async from "async";
 import {Globals} from "./main";
 import WriteStream = NodeJS.WriteStream;
+import * as cookie from "cookie";
 
 const {dialog} = require('electron').remote;
 const csv = require("csv-write-stream");
@@ -28,26 +29,211 @@ function bootstrap() {
                     url: '/jp-pollen',
                     component: 'jpPollenComponent',
                 })
+                .state('usa_pollen', <ui.Ng1StateDeclaration> {
+                    url: '/usa-pollen',
+                    component: 'usaPollenComponent',
+                })
             ;
 
         })
         .component('homeComponent', new HomeComponent())
         .component('jpPollenComponent', new JPPollenComponent())
+        .component('usaPollenComponent', new USAPollenComponent())
     ;
 }
 
-class HomeComponent implements ng.IComponentOptions {
+class HomeComponent implements angular.IComponentOptions {
     public transclude: boolean = true;
     public templateUrl: string = "templates/home.html";
-    public controller : any = HomeController;
+    public controller : any = () => {};
     public bindings: any = { };
 }
 
-class HomeController {
-
+class USAPollenComponent implements angular.IComponentOptions {
+    public transclude: boolean = true;
+    public templateUrl: string = "templates/usaPollen.html";
+    public controller : any = USAPollenController;
+    public bindings: any = { };
 }
 
-class JPPollenComponent implements ng.IComponentOptions {
+abstract class BaseController {
+    public $rootScope : angular.IRootScopeService;
+
+    public isCanceled : boolean = false;
+    public loading : boolean = false;
+    public displayError : string = "";
+    public doneMsg : string = "";
+    public selectedOutputFile : string = "/home/ashish/Downloads/usa_output.csv";
+
+    public numRequests : number = 0;
+    public requestsMade : number = 0;
+    public overallProgress : number = 0;
+
+    constructor($rootScope : angular.IRootScopeService){
+        this.$rootScope = $rootScope;
+    }
+
+    public cancel() : void {
+        this.isCanceled = true;
+    }
+
+    public setLoading(val : boolean) : void {
+        this.$rootScope.$applyAsync(() => {
+            this.loading = val;
+        });
+    }
+
+    public setDisplayError(val : string) : void {
+        this.$rootScope.$applyAsync(() => {
+            this.displayError = val;
+        });
+    }
+
+    public setProgress(val : number) : void {
+        this.$rootScope.$applyAsync(() => {
+            this.overallProgress = val;
+        });
+    }
+
+    public selectFile() : void {
+        dialog.showSaveDialog(null, null, (result) => {
+            this.$rootScope.$applyAsync(() => {
+                this.selectedOutputFile = result;
+            });
+        });
+    }
+
+    public updateProgress() : void {
+        this.$rootScope.$applyAsync(() => {
+            this.requestsMade += 1;
+        });
+
+        const progress = Math.ceil((this.requestsMade / this.numRequests) * 100);
+        this.setProgress(progress);
+    }
+}
+
+interface ZipcodePoint {
+    Period : string;
+    Index : number;
+}
+
+interface Zipcode {
+    zipcode : string;
+    status : string;
+    points : ZipcodePoint[];
+}
+
+
+class USAPollenController extends BaseController {
+    static $inject = ["$rootScope"];
+
+    public daysBack : number = 30;
+    public zipcodes : string = "";
+    public zipcodeData : Zipcode[] = [];
+
+    constructor($rootScope : angular.IRootScopeService){
+        super($rootScope);
+    }
+
+    public onSubmit() : void {
+        if(!this.selectedOutputFile){
+            this.setDisplayError("You must select an output file!");
+            return;
+        }
+
+        if(!this.daysBack){
+            this.setDisplayError("You must specify a days back value.");
+            return;
+        }
+
+        const zipcodes = this.zipcodes.split("\n");
+        if(zipcodes.length == 0){
+            this.setDisplayError("You need to specify at least 1 zipcode.");
+            return;
+        }
+
+        this.$rootScope.$applyAsync(() => {
+            this.zipcodeData = zipcodes.map(f => { return {zipcode: f, status: "new", points: []} });
+            this.numRequests = this.zipcodeData.length;
+            this.requestsMade = 0;
+            this.setProgress(0);
+            this.isCanceled = false;
+
+            async.eachLimit(this.zipcodeData, 10, (req, callback) => {
+                if (this.isCanceled) {
+                    callback();
+                    return;
+                }
+
+                const url = `https://www.pollen.com/api/forecast/historic/pollen/${req.zipcode}/${this.daysBack}`;
+                got(url, {headers: {
+                        "Accept": "application/json, text/plain, */*",
+                        "Referer": `https://www.pollen.com/forecast/historic/pollen/${req.zipcode}`
+                    }})
+                    .then(response => {
+                        const data : any = JSON.parse(response.body);
+                        req.points = data["Location"]["periods"];
+
+                        this.$rootScope.$applyAsync(() => {
+                            req.status = "done";
+                        });
+
+                        callback();
+                        this.writeFile();
+                    })
+                    .catch((err) => {
+
+                        this.$rootScope.$applyAsync(() => {
+                            req.status = "error";
+                        });
+
+                        callback();
+                    })
+                ;
+
+                this.updateProgress();
+            }, (err) => {
+                if(err) {
+                    this.setDisplayError(<string> err);
+                    return;
+                }
+
+                this.doneMsg = "Run complete! Your file is at " + this.selectedOutputFile;
+            });
+
+        });
+    }
+
+    public importAllZipcodes() : void {
+        const data = fs.readFileSync("data/zip_code_database.csv", "utf8")
+                        .split("\n")
+                        .map(f => f.split(",")[0]);
+
+        this.$rootScope.$applyAsync(() => {
+            this.zipcodes = data.slice(1).join("\n");
+        });
+    }
+
+    public writeFile() : void {
+        const longDateZip = _.sortBy(this.zipcodeData, f => f.points.length).pop();
+        const header = ["Zip code"].concat(<string[]> longDateZip.points.map(f => {
+            const mt = moment(f.Period, "YYYY-MM-DDTHH:mm:ss");
+            return mt.format("YYYY-MM-DD");
+        }));
+        const writer : WriteStream = csv({ headers: header });
+
+        writer.pipe(fs.createWriteStream(this.selectedOutputFile));
+        this.zipcodeData.forEach(f => {
+            const data = [f.zipcode].concat(f.points.map(fx => fx.Index.toString()));
+            writer.write(<any> data);
+        });
+
+        writer.end();
+    }
+}
+
+class JPPollenComponent implements angular.IComponentOptions {
     public transclude: boolean = true;
     public templateUrl: string = "templates/jpPollen.html";
     public controller : any = JPPollenController;
@@ -69,10 +255,9 @@ interface City {
     progressPercent : number;
 }
 
-class JPPollenController {
+class JPPollenController extends BaseController {
 
     static $inject = ["$rootScope"];
-
     public $rootScope : angular.IRootScopeService;
 
     public tab : "list" | "progress" | "none" = "none";
@@ -80,41 +265,15 @@ class JPPollenController {
     public dateArray : string[] = [];
     public cities : City[] = [];
 
-    public isCanceled : boolean = false;
-    public loading : boolean = false;
-    public displayError : string = "";
-    public doneMsg : string = "";
-    public selectedOutputFile : string = "/home/ashish/Downloads/jp_output.csv";
-
     public startDate : Date = moment().subtract(1, "month").toDate();
     public endDate : Date = new Date();
 
-    public numRequests : number = 0;
-    public requestsMade : number = 0;
-    public overallProgress : number = 0;
-
     constructor($rootScope : angular.IRootScopeService){
-        this.$rootScope = $rootScope;
+        super($rootScope);
     }
 
     public $onInit() : void {
 
-    }
-
-    public cancel() : void {
-        this.isCanceled = true;
-    }
-
-    public setLoading(val : boolean) : void {
-        this.$rootScope.$applyAsync(() => {
-            this.loading = val;
-        });
-    }
-
-    public setDisplayError(val : string) : void {
-        this.$rootScope.$applyAsync(() => {
-            this.displayError = val;
-        });
     }
 
     public onSubmit() : void {
@@ -170,7 +329,6 @@ class JPPollenController {
                                     return dateArray.map(d => { return {city: f, date: d}; });
                                  })
                                  .flatten()
-                                 .shuffle()
                                  .value();
 
         this.dateArray = dateArray;
@@ -216,7 +374,6 @@ class JPPollenController {
                     callback();
                 })
                 .catch(err => {
-
                     if(this.isCanceled){
                         return;
                     }
@@ -225,13 +382,10 @@ class JPPollenController {
                         targetDate.status = "error";
                     });
 
-                    callback(err);
+                    callback();
                 });
 
-                this.requestsMade += 1;
-                const progress = Math.ceil((this.requestsMade / this.numRequests) * 100);
-                this.setProgress(progress);
-
+                this.updateProgress();
             }, (err) => {
                 if(err) {
                     this.setDisplayError(<string> err);
@@ -244,13 +398,6 @@ class JPPollenController {
         });
 
     }
-
-    private setProgress(val : number) : void {
-        this.$rootScope.$applyAsync(() => {
-            this.overallProgress = val;
-        });
-    }
-
     public fetchCities() : void {
 
         this.setLoading(true);
@@ -286,14 +433,6 @@ class JPPollenController {
                 .catch((err) => {
                     reject(err);
                 });
-        });
-    }
-
-    public selectFile() : void {
-        dialog.showSaveDialog(null, null, (result) => {
-            this.$rootScope.$applyAsync(() => {
-               this.selectedOutputFile = result;
-            });
         });
     }
 

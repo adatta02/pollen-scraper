@@ -1,0 +1,88 @@
+<div class="container margin-top">
+    <div class="row">
+        <div class="col-sm-5">
+            <h3>What's up? <img ng-show="$ctrl.loading" src="assets/ajax-loader.gif" /></h3>
+            <ul>
+                <li>We're going to scrape data from https://www.pollen.com</li>
+                <li>You can use all zip codes or enter a list of your choosing</li>
+                <li>The "days back" is configurable but be advised there's no way to tell if there's missing data or if its a 0</li>
+            </ul>
+
+            <form ng-submit="$ctrl.onSubmit()">
+                <div class="form-group">
+                    <label for="daysBack">Days back</label>
+                    <input id="daysBack" class="form-control" ng-model="$ctrl.daysBack" type="number" />
+                </div>
+
+                <div class="form-group">
+                    <label for="file">Output file</label>
+                    <ul class="list-inline list-unstyled">
+                        <li class="list-inline-item">
+                            <button class="btn btn-sm btn-dark" id="file" ng-click="$ctrl.selectFile()">Select File</button>
+                        </li>
+                        <li class="list-inline-item">
+                            <span ng-bind="$ctrl.selectedOutputFile"></span>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="form-group">
+                    <label for="zipcodes">Zip Codes:</label>
+
+                    <div class="mt-1 mb-1">
+                        <button class="btn btn-sm btn-dark" ng-click="$ctrl.importAllZipcodes()">Import US zipcodes</button>
+                    </div>
+
+                    <textarea class="form-control form-zipcodes" id="zipcodes" ng-model="$ctrl.zipcodes"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <button class="btn btn-primary btn-block" type="submit">Fetch Data</button>
+                </div>
+
+            </form>
+        </div>
+        <div class="col-sm-7">
+            <div ng-show="$ctrl.displayError" class="alert alert-danger text-center">
+                <h3>Something went wrong :(</h3>
+                <p ng-bind="$ctrl.displayError"></p>
+            </div>
+
+            <div ng-if="$ctrl.zipcodeData.length">
+
+                <div ng-show="$ctrl.doneMsg" class="alert alert-success text-center">
+                    <h4 ng-bind="$ctrl.doneMsg"></h4>
+                </div>
+
+                <table class="table table-sm table-progress">
+                    <tr>
+                        <td>
+                            <small>{{ $ctrl.requestsMade }} / {{ $ctrl.numRequests }}</small>
+                        </td>
+                        <td class="text-right">
+                            <button class="btn btn-sm btn-danger" ng-click="$ctrl.cancel()">Cancel</button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td  colspan="2">
+                            <div class="progress">
+                                <div class="progress-bar bg-info" ng-style="{width: $ctrl.overallProgress + '%'}"></div>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>Zip code</th>
+                        <th>Done?</th>
+                    </tr>
+                    <tr ng-repeat="zip in $ctrl.zipcodeData">
+                        <td ng-bind="zip.zipcode"></td>
+                        <td class="text-center">
+                            <div ng-class="zip.status + ' progress-cell'"></div>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+
+        </div>
+    </div>
+</div>

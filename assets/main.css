@@ -2,23 +2,27 @@
     margin-top: 2rem;
 }
 
-.list-progress li {
+.list-progress li, .progress-cell {
     height: 5px;
     width: 5px;
 }
 
-.list-progress li.new {
+.list-progress li.new, .progress-cell.new {
     background-color: #ccc;
 }
 
-.list-progress li.done {
+.list-progress li.done, .progress-cell.done {
     background-color: #28a745;
 }
 
-.list-progress li.error {
+.list-progress li.error, .progress-cell.error {
     background-color: #dc3545;
 }
 
 .table-progress td {
     padding: 3px;
+}
+
+.form-zipcodes {
+    height: 300px;
 }
