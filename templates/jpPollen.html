@@ -1,7 +1,9 @@
 <div class="container margin-top">
     <div class="row">
         <div class="col-sm-5">
+
             <h3>What's up? <img ng-show="$ctrl.loading" src="assets/ajax-loader.gif" /></h3>
+
             <ul>
                 <li>We're going to scrape all the data available on http://weathernews.jp/pollen/#//c=0</li>
                 <li>You can configure the date range below.</li>
@@ -37,7 +39,14 @@
 
                 <div class="form-group">
                     <hr />
-                    <button ng-click="$ctrl.fetchCities()" class="btn btn-dark">List Cities</button>
+                    <ul class="list-inline list-unstyled">
+                        <li class="list-inline-item">
+                            <a class="btn btn-sm btn-info" ui-sref="home">Back to launcher</a>
+                        </li>
+                        <li class="list-inline-item">
+                            <button ng-click="$ctrl.fetchCities()" class="btn btn-sm btn-dark">List Cities</button>
+                        </li>
+                    </ul>
                 </div>
             </form>
 

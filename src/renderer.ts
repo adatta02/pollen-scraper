@@ -86,7 +86,7 @@ class JPPollenController {
     public doneMsg : string = "";
     public selectedOutputFile : string = "/home/ashish/Downloads/jp_output.csv";
 
-    public startDate : Date = moment().subtract(2, "month").toDate();
+    public startDate : Date = moment().subtract(1, "month").toDate();
     public endDate : Date = new Date();
 
     public numRequests : number = 0;
@@ -102,9 +102,7 @@ class JPPollenController {
     }
 
     public cancel() : void {
-        this.$rootScope.$applyAsync(() => {
-           this.isCanceled = true;
-        });
+        this.isCanceled = true;
     }
 
     public setLoading(val : boolean) : void {
@@ -181,6 +179,7 @@ class JPPollenController {
             this.numRequests = cityDateRequest.length;
             this.requestsMade = 0;
             this.setProgress(0);
+            this.isCanceled = false;
 
             this.cities = cities.map(f => {
                 f.data = dateArray.map(d => { return {status: "new", sum: 0, date: d, points: []}; });
@@ -217,6 +216,11 @@ class JPPollenController {
                     callback();
                 })
                 .catch(err => {
+
+                    if(this.isCanceled){
+                        return;
+                    }
+
                     this.$rootScope.$applyAsync(() => {
                         targetDate.status = "error";
                     });
@@ -227,6 +231,7 @@ class JPPollenController {
                 this.requestsMade += 1;
                 const progress = Math.ceil((this.requestsMade / this.numRequests) * 100);
                 this.setProgress(progress);
+
             }, (err) => {
                 if(err) {
                     this.setDisplayError(<string> err);
