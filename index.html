@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>Pollen Scrapey Scrapey</title>
+
+    <script>
+      require('./node_modules/angular/angular.js');
+      require('./node_modules/@uirouter/angularjs/release/angular-ui-router.min.js');
+      require('./dist/renderer.js');
+    </script>
+
+    <link rel="stylesheet" href="assets/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="assets/main.css" />
+  </head>
+  <body ng-app="ScrapeyPollenApp">
+
+    <div ui-view></div>
+
+  </body>
+</html>

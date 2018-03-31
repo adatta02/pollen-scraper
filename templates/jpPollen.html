@@ -1,0 +1,94 @@
+<div class="container margin-top">
+    <div class="row">
+        <div class="col-sm-5">
+            <h3>What's up? <img ng-show="$ctrl.loading" src="assets/ajax-loader.gif" /></h3>
+            <ul>
+                <li>We're going to scrape all the data available on http://weathernews.jp/pollen/#//c=0</li>
+                <li>You can configure the date range below.</li>
+                <li>You can also just fetch the list of available cities.</li>
+            </ul>
+
+            <form ng-submit="$ctrl.onSubmit()">
+                <div class="form-group">
+                    <label for="startDate">Start Date:</label>
+                    <input id="startDate" class="form-control" ng-model="$ctrl.startDate" type="date" />
+                </div>
+
+                <div class="form-group">
+                    <label for="endDate">End Date:</label>
+                    <input id="endDate" class="form-control" ng-model="$ctrl.endDate" type="date" />
+                </div>
+
+                <div class="form-group">
+                    <button class="btn btn-primary btn-block" type="submit">Fetch Data</button>
+                </div>
+
+                <div class="form-group">
+                    <hr />
+                    <button ng-click="$ctrl.fetchCities()" class="btn btn-dark">List Cities</button>
+                </div>
+            </form>
+
+        </div>
+        <div class="col-sm-7">
+
+            <div ng-show="$ctrl.displayError" class="alert alert-danger text-center">
+                <h3>Something went wrong :(</h3>
+                <p ng-bind="$ctrl.displayError"></p>
+            </div>
+
+            <div ng-if="$ctrl.tab == 'list'">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <td colspan="2" class="text-right">
+                                <button ng-click="$ctrl.downloadCSV()" class="btn btn-dark">Save As CSV</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Id</th>
+                            <th>Name</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr ng-repeat="city in $ctrl.cities">
+                            <td ng-bind="city.id"></td>
+                            <td ng-bind="city.name"></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div ng-if="$ctrl.tab == 'progress'">
+                <table class="table table-sm table-progress">
+                    <thead>
+                        <tr>
+                            <th colspan="2">
+                                <div class="progress">
+                                    <div class="progress-bar bg-info" ng-style="{width: $ctrl.overallProgress + '%'}"></div>
+                                </div>
+                            </th>
+                        </tr>
+                        <tr>
+                            <th>Id / Name</th>
+                            <th>Progress</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr ng-repeat="city in $ctrl.cities">
+                            <td>
+                                <small ng-bind="city.displayName"></small>
+                            </td>
+                            <td>
+                                <ul class="list-unstyled list-inline list-progress">
+                                    <li ng-repeat="progress in city.data" ng-class="progress.status + ' list-inline-item'"></li>
+                                </ul>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+    </div>
+</div>

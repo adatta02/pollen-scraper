@@ -1,0 +1,16 @@
+.margin-top {
+    margin-top: 2rem;
+}
+
+.list-progress li {
+    height: 5px;
+    width: 5px;
+}
+
+.list-progress li.new {
+    background-color: #ccc;
+}
+
+.table-progress td {
+    padding: 3px;
+}
