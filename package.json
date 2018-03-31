@@ -25,11 +25,13 @@
   },
   "dependencies": {
     "@types/angular": "^1.6.43",
+    "@types/async": "^2.0.48",
     "@types/cheerio": "^0.22.7",
     "@types/got": "^7.1.8",
     "@uirouter/angularjs": "^1.0.15",
     "angular": "^1.6.9",
     "angularjs": "0.0.1",
+    "async": "^2.6.0",
     "cheerio": "^1.0.0-rc.2",
     "csv-write-stream": "^2.0.0",
     "got": "^8.3.0",

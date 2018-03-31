@@ -11,6 +11,14 @@
     background-color: #ccc;
 }
 
+.list-progress li.done {
+    background-color: #28a745;
+}
+
+.list-progress li.error {
+    background-color: #dc3545;
+}
+
 .table-progress td {
     padding: 3px;
 }

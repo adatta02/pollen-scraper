@@ -20,6 +20,14 @@
                 </div>
 
                 <div class="form-group">
+                    <label for="file">Output file</label>
+                    <ul class="list-inline list-unstyled">
+                        <li class="list-inline-item"><a id="file" ng-click="$ctrl.selectFile()">Select File</a></li>
+                        <li ng-bind="$ctrl.selectedOutputFile"></li>
+                    </ul>
+                </div>
+
+                <div class="form-group">
                     <button class="btn btn-primary btn-block" type="submit">Fetch Data</button>
                 </div>
 
@@ -63,11 +71,14 @@
                 <table class="table table-sm table-progress">
                     <thead>
                         <tr>
-                            <th colspan="2">
+                            <td>
+                                <small>{{ $ctrl.requestsMade }} / {{ $ctrl.numRequests }}</small>
+                            </td>
+                            <td>
                                 <div class="progress">
                                     <div class="progress-bar bg-info" ng-style="{width: $ctrl.overallProgress + '%'}"></div>
                                 </div>
-                            </th>
+                            </td>
                         </tr>
                         <tr>
                             <th>Id / Name</th>
