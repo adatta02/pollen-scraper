@@ -7,6 +7,10 @@
     width: 5px;
 }
 
+.progress-cell {
+    display: inline-block;
+}
+
 .list-progress li.new, .progress-cell.new {
     background-color: #ccc;
 }
