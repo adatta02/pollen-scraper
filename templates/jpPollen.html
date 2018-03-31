@@ -22,8 +22,12 @@
                 <div class="form-group">
                     <label for="file">Output file</label>
                     <ul class="list-inline list-unstyled">
-                        <li class="list-inline-item"><a id="file" ng-click="$ctrl.selectFile()">Select File</a></li>
-                        <li ng-bind="$ctrl.selectedOutputFile"></li>
+                        <li class="list-inline-item">
+                            <button class="btn btn-sm btn-dark" id="file" ng-click="$ctrl.selectFile()">Select File</button>
+                        </li>
+                        <li class="list-inline-item">
+                            <span ng-bind="$ctrl.selectedOutputFile"></span>
+                        </li>
                     </ul>
                 </div>
 
@@ -68,13 +72,22 @@
             </div>
 
             <div ng-if="$ctrl.tab == 'progress'">
+                <div ng-show="$ctrl.doneMsg" class="alert alert-success text-center">
+                    <h4 ng-bind="$ctrl.doneMsg"></h4>
+                </div>
+
                 <table class="table table-sm table-progress">
                     <thead>
                         <tr>
                             <td>
                                 <small>{{ $ctrl.requestsMade }} / {{ $ctrl.numRequests }}</small>
                             </td>
-                            <td>
+                            <td class="text-right">
+                                <button class="btn btn-sm btn-danger" ng-click="$ctrl.cancel()">Cancel</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td  colspan="2">
                                 <div class="progress">
                                     <div class="progress-bar bg-info" ng-style="{width: $ctrl.overallProgress + '%'}"></div>
                                 </div>

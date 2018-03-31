@@ -80,8 +80,10 @@ class JPPollenController {
     public dateArray : string[] = [];
     public cities : City[] = [];
 
+    public isCanceled : boolean = false;
     public loading : boolean = false;
     public displayError : string = "";
+    public doneMsg : string = "";
     public selectedOutputFile : string = "/home/ashish/Downloads/jp_output.csv";
 
     public startDate : Date = moment().subtract(2, "month").toDate();
@@ -99,6 +101,12 @@ class JPPollenController {
 
     }
 
+    public cancel() : void {
+        this.$rootScope.$applyAsync(() => {
+           this.isCanceled = true;
+        });
+    }
+
     public setLoading(val : boolean) : void {
         this.$rootScope.$applyAsync(() => {
             this.loading = val;
@@ -114,6 +122,11 @@ class JPPollenController {
     public onSubmit() : void {
         if(!this.startDate || !this.endDate){
             this.setDisplayError("You must specify both a start and end date!");
+            return;
+        }
+
+        if(!this.selectedOutputFile){
+            this.setDisplayError("You must select an output file!");
             return;
         }
 
@@ -154,9 +167,13 @@ class JPPollenController {
             d.add(1, "day");
         }
 
-        const cityDateRequest = _.flatten(cities.map(f => {
-            return dateArray.map(d => { return {city: f, date: d}; });
-        }));
+        const cityDateRequest = _.chain(cities)
+                                 .map(f => {
+                                    return dateArray.map(d => { return {city: f, date: d}; });
+                                 })
+                                 .flatten()
+                                 .shuffle()
+                                 .value();
 
         this.dateArray = dateArray;
 
@@ -170,7 +187,12 @@ class JPPollenController {
                 return f;
             });
 
-            async.eachLimit(cityDateRequest, 5, (req, callback) => {
+            async.eachLimit(cityDateRequest, 10, (req, callback) => {
+
+                if(this.isCanceled){
+                    callback();
+                    return;
+                }
 
                 const targetCity = this.cities.find(f => f == req.city);
                 const targetDate = targetCity.data.find(f => f.date == req.date);
@@ -187,7 +209,7 @@ class JPPollenController {
                     });
 
                     if(pollen){
-                        targetDate.points = pollen.split(",").map(f => parseInt(f));
+                        targetDate.points = pollen.split(",").map(f => f.length ? parseInt(f) : 0);
                         targetDate.sum = _.sum(targetDate.points);
                     }
 
@@ -198,7 +220,8 @@ class JPPollenController {
                     this.$rootScope.$applyAsync(() => {
                         targetDate.status = "error";
                     });
-                    callback();
+
+                    callback(err);
                 });
 
                 this.requestsMade += 1;
@@ -210,6 +233,7 @@ class JPPollenController {
                     return;
                 }
 
+                this.doneMsg = "Run complete! Your file is at " + this.selectedOutputFile;
             });
 
         });
