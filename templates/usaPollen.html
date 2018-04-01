@@ -28,12 +28,11 @@
 
                 <div class="form-group">
                     <label for="zipcodes">Zip Codes:</label>
-
-                    <div class="mt-1 mb-1">
-                        <button class="btn btn-sm btn-dark" ng-click="$ctrl.importAllZipcodes()">Import US zipcodes</button>
-                    </div>
-
                     <textarea class="form-control form-zipcodes" id="zipcodes" ng-model="$ctrl.zipcodes"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <button type="button" class="btn btn-sm btn-dark" ng-click="$ctrl.importAllZipcodes()">Import US zipcodes</button>
                 </div>
 
                 <div class="form-group">
@@ -43,12 +42,12 @@
             </form>
         </div>
         <div class="col-sm-7">
-            <div ng-show="$ctrl.displayError" class="alert alert-danger text-center">
-                <h3>Something went wrong :(</h3>
-                <p ng-bind="$ctrl.displayError"></p>
-            </div>
 
-            <div ng-if="$ctrl.zipcodeData.length">
+            <div ng-show="$ctrl.isStarted">
+                <div ng-show="$ctrl.displayError" class="alert alert-danger text-center">
+                    <h3>Something went wrong :(</h3>
+                    <p ng-bind="$ctrl.displayError"></p>
+                </div>
 
                 <div ng-show="$ctrl.doneMsg" class="alert alert-success text-center">
                     <h4 ng-bind="$ctrl.doneMsg"></h4>
@@ -60,6 +59,8 @@
                             <small>{{ $ctrl.requestsMade }} / {{ $ctrl.numRequests }}</small>
                         </td>
                         <td class="text-right">
+                            <button class="btn btn-sm btn-dark" ng-click="$ctrl.syncData()">Update Table</button>
+
                             <button class="btn btn-sm btn-danger" ng-click="$ctrl.cancel()">Cancel</button>
                         </td>
                     </tr>
@@ -74,7 +75,7 @@
                         <th>Zip code</th>
                         <th>Done?</th>
                     </tr>
-                    <tr ng-repeat="zip in $ctrl.zipcodeData">
+                    <tr ng-repeat="zip in $ctrl.updatedZipcodeData">
                         <td ng-bind="zip.zipcode"></td>
                         <td class="text-center">
                             <div ng-class="zip.status + ' progress-cell'"></div>

@@ -63,7 +63,7 @@ abstract class BaseController {
     public loading : boolean = false;
     public displayError : string = "";
     public doneMsg : string = "";
-    public selectedOutputFile : string = "/home/ashish/Downloads/usa_output.csv";
+    public selectedOutputFile : string = "";
 
     public numRequests : number = 0;
     public requestsMade : number = 0;
@@ -130,7 +130,15 @@ class USAPollenController extends BaseController {
 
     public daysBack : number = 30;
     public zipcodes : string = "";
+
+    public zipcodeList : string[] = [];
     public zipcodeData : Zipcode[] = [];
+    public updatedZipcodeData : Zipcode[] = [];
+
+    public isStarted : boolean = false;
+    private numPerSlice : number = 1000;
+    public startIndex : number = 0;
+    public endIndex : number = 0;
 
     constructor($rootScope : angular.IRootScopeService){
         super($rootScope);
@@ -147,62 +155,81 @@ class USAPollenController extends BaseController {
             return;
         }
 
-        const zipcodes = this.zipcodes.split("\n");
-        if(zipcodes.length == 0){
+        this.zipcodeList = this.zipcodes.split("\n");
+        if(this.zipcodeList.length == 0){
             this.setDisplayError("You need to specify at least 1 zipcode.");
             return;
         }
 
         this.$rootScope.$applyAsync(() => {
-            this.zipcodeData = zipcodes.map(f => { return {zipcode: f, status: "new", points: []} });
-            this.numRequests = this.zipcodeData.length;
+            this.numRequests = this.zipcodeList.length;
             this.requestsMade = 0;
             this.setProgress(0);
             this.isCanceled = false;
+        });
 
-            async.eachLimit(this.zipcodeData, 10, (req, callback) => {
-                if (this.isCanceled) {
+        this.startIndex = 0;
+        this.endIndex = this.numPerSlice;
+        this.isStarted = true;
+        this.processSlice();
+    }
+
+    public processSlice() : void {
+
+        const zipcodeData = this.zipcodeList
+                                .slice(this.startIndex, this.endIndex)
+                                .map(f => { return {zipcode: f, status: "new", points: []} });
+
+        async.eachLimit(zipcodeData, 10, (req, callback) => {
+            if (this.isCanceled) {
+                callback();
+                return;
+            }
+
+            const url = `https://www.pollen.com/api/forecast/historic/pollen/${req.zipcode}/${this.daysBack}`;
+            got(url, {headers: {
+                    "Accept": "application/json, text/plain, */*",
+                    "Referer": `https://www.pollen.com/forecast/historic/pollen/${req.zipcode}`
+                }})
+                .then(response => {
+                    const data : any = JSON.parse(response.body);
+                    req.points = data["Location"]["periods"];
+
+                    req.status = "done";
+                    this.zipcodeData.push(req);
+
+                    this.updateProgress();
                     callback();
-                    return;
-                }
+                })
+                .catch((err) => {
 
-                const url = `https://www.pollen.com/api/forecast/historic/pollen/${req.zipcode}/${this.daysBack}`;
-                got(url, {headers: {
-                        "Accept": "application/json, text/plain, */*",
-                        "Referer": `https://www.pollen.com/forecast/historic/pollen/${req.zipcode}`
-                    }})
-                    .then(response => {
-                        const data : any = JSON.parse(response.body);
-                        req.points = data["Location"]["periods"];
+                    this.$rootScope.$applyAsync(() => {
+                        req.status = "error";
+                    });
 
-                        this.$rootScope.$applyAsync(() => {
-                            req.status = "done";
-                        });
+                    callback();
+                })
+            ;
 
-                        callback();
-                        this.writeFile();
-                    })
-                    .catch((err) => {
+        }, (err) => {
+            if(err) {
+                this.setDisplayError(<string> err);
+                return;
+            }
 
-                        this.$rootScope.$applyAsync(() => {
-                            req.status = "error";
-                        });
+            this.writeFile();
 
-                        callback();
-                    })
-                ;
+            this.startIndex += this.numPerSlice;
+            this.endIndex += this.numPerSlice;
 
-                this.updateProgress();
-            }, (err) => {
-                if(err) {
-                    this.setDisplayError(<string> err);
-                    return;
-                }
-
+            if(this.startIndex <= this.numRequests){
+                this.processSlice();
+            }else{
                 this.doneMsg = "Run complete! Your file is at " + this.selectedOutputFile;
-            });
+            }
 
         });
+
     }
 
     public importAllZipcodes() : void {
@@ -210,14 +237,16 @@ class USAPollenController extends BaseController {
                         .split("\n")
                         .map(f => f.split(",")[0]);
 
+        this.setLoading(true);
         this.$rootScope.$applyAsync(() => {
-            this.zipcodes = data.slice(1).join("\n");
+            this.zipcodes = data.slice(1).join("\n").trim();
+            this.setLoading(false);
         });
     }
 
     public writeFile() : void {
-        const longDateZip = _.sortBy(this.zipcodeData, f => f.points.length).pop();
-        const header = ["Zip code"].concat(<string[]> longDateZip.points.map(f => {
+        const longDateZip = _.sortBy(this.zipcodeData, f => f.points.length);
+        const header = ["Zip code"].concat(<string[]> longDateZip[longDateZip.length - 1].points.map(f => {
             const mt = moment(f.Period, "YYYY-MM-DDTHH:mm:ss");
             return mt.format("YYYY-MM-DD");
         }));
@@ -230,6 +259,10 @@ class USAPollenController extends BaseController {
         });
 
         writer.end();
+    }
+
+    public syncData() : void {
+        this.updatedZipcodeData = [].concat(this.zipcodeData);
     }
 }
 
