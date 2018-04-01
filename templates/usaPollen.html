@@ -32,7 +32,8 @@
                 </div>
 
                 <div class="form-group">
-                    <button type="button" class="btn btn-sm btn-dark" ng-click="$ctrl.importAllZipcodes()">Import US zipcodes</button>
+                    <button type="button"
+                            class="btn btn-sm btn-dark" ng-click="$ctrl.importAllZipcodes()">Import US zipcodes</button>
                 </div>
 
                 <div class="form-group">
@@ -43,11 +44,12 @@
         </div>
         <div class="col-sm-7">
 
+            <div ng-show="$ctrl.displayError" class="alert alert-danger text-center">
+                <h3>Something went wrong :(</h3>
+                <p ng-bind="$ctrl.displayError"></p>
+            </div>
+
             <div ng-show="$ctrl.isStarted">
-                <div ng-show="$ctrl.displayError" class="alert alert-danger text-center">
-                    <h3>Something went wrong :(</h3>
-                    <p ng-bind="$ctrl.displayError"></p>
-                </div>
 
                 <div ng-show="$ctrl.doneMsg" class="alert alert-success text-center">
                     <h4 ng-bind="$ctrl.doneMsg"></h4>

@@ -91,7 +91,7 @@ abstract class BaseController {
 
     public setProgress(val : number) : void {
         this.$rootScope.$applyAsync(() => {
-            this.overallProgress = val;
+
         });
     }
 
@@ -106,11 +106,12 @@ abstract class BaseController {
     public updateProgress() : void {
         this.$rootScope.$applyAsync(() => {
             this.requestsMade += 1;
-        });
 
-        const progress = Math.ceil((this.requestsMade / this.numRequests) * 100);
-        this.setProgress(progress);
+            const progress = Math.ceil((this.requestsMade / this.numRequests) * 100);
+            this.overallProgress = progress;
+        });
     }
+
 }
 
 interface ZipcodePoint {
@@ -155,11 +156,13 @@ class USAPollenController extends BaseController {
             return;
         }
 
-        this.zipcodeList = this.zipcodes.split("\n");
+        this.zipcodeList = this.zipcodes.trim().split("\n");
         if(this.zipcodeList.length == 0){
             this.setDisplayError("You need to specify at least 1 zipcode.");
             return;
         }
+
+        this.setDisplayError("");
 
         this.$rootScope.$applyAsync(() => {
             this.numRequests = this.zipcodeList.length;
