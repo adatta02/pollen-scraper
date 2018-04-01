@@ -171,6 +171,7 @@ class USAPollenController extends BaseController {
             this.isCanceled = false;
         });
 
+        this.zipcodeData = [];
         this.startIndex = 0;
         this.endIndex = this.numPerSlice;
         this.isStarted = true;
