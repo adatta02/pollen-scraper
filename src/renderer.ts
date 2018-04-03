@@ -10,6 +10,8 @@ import {Globals} from "./main";
 import WriteStream = NodeJS.WriteStream;
 import * as cookie from "cookie";
 
+import * as turf from "@turf/turf";
+import {FeatureCollection} from "@turf/helpers/lib/geojson";
 const {dialog} = require('electron').remote;
 const csv = require("csv-write-stream");
 
@@ -260,6 +262,7 @@ class USAPollenController extends BaseController {
 
             if(this.startIndex <= this.numRequests){
                 this.processSlice();
+                this.syncData();
             }else{
                 this.doneMsg = "Run complete! Your file is at " + this.selectedOutputFile;
             }
@@ -316,6 +319,12 @@ class JPCloseCityController extends BaseController {
     public inputFile: string;
     public outputFile : string;
 
+    public availableCities : City[];
+    public cityFeatures : turf.FeatureCollection<any>;
+
+    public geocodeItems : Geocode[];
+    public completeItems : Geocode[] = [];
+
     constructor($rootScope : angular.IRootScopeService){
         super($rootScope);
     }
@@ -326,14 +335,106 @@ class JPCloseCityController extends BaseController {
             return;
         }
 
+        const re = new RegExp("\r?\n");
+        const data = fs.readFileSync(this.inputFile, "utf8").trim().split(re);
+
+        if(data.length == 0){
+            this.setDisplayError("Couldn't find any data in your file?");
+            return;
+        }
+
+        this.setLoading(true);
+        this.setDisplayError("");
+
+        this.$rootScope.$applyAsync(() => {
+            this.numRequests = data.length;
+            this.requestsMade = 0;
+            this.setProgress(0);
+        });
+
+        this.completeItems = [];
+        this.geocodeItems = data.map(f => {return {label: f, status: "NEW"}});
+
+        this.getJPCities()
+            .then(results =>{
+                this.availableCities = results;
+                const cityPoints = this.availableCities.map(f => turf.point([f.long, f.lat], f));
+                this.cityFeatures = turf.featureCollection(cityPoints);
+
+                this.processNext();
+            })
+            .catch(err => {
+                this.setLoading(false);
+                this.setDisplayError(err);
+            });
+    }
+
+    public processNext() : void {
+        if(this.geocodeItems.length == 0){
+            this.setLoading(false);
+            return;
+        }
+
+        const targetItem = this.geocodeItems.pop();
+        const url = `https://nominatim.openstreetmap.org/search?q=${targetItem.label},Japan&format=json&limit=1`;
+
+        got(url, {headers: {"User-Agent": "Pollen Data - https://github.com/adatta02/pollen-scraper"}})
+        .then(response => {
+            const parsed = JSON.parse(response.body);
+
+            if(parsed.length){
+                targetItem.lat = parsed[0]["lat"];
+                targetItem.long = parsed[0]["lon"];
+                targetItem.status = "DONE";
+
+                const turfPoint = turf.point([targetItem.long, targetItem.lat]);
+                const nearPoint = turf.nearestPoint(turfPoint, this.cityFeatures);
+
+                if(nearPoint){
+                    targetItem.city = (<City> (<any> nearPoint.properties));
+                }
+            }else{
+                targetItem.status = "NO_DATA";
+            }
+
+            this.$rootScope.$applyAsync(() => {
+                this.completeItems.push(targetItem);
+                this.requestsMade += 1;
+            });
+
+            this.writeFile();
+            this.updateProgress();
+
+            setTimeout(() => { this.processNext(); }, 800);
+        })
+        .catch(err => {
+            this.setLoading(false);
+            this.setDisplayError(err);
+        });
+    }
+
+    public writeFile() : void {
+        const header = ["geocoded label", "status", "geocoded lat", "geocoded long", "close city", "close lat", "close long"];
+        const writer : WriteStream = csv({ headers: header });
+
+        writer.pipe(fs.createWriteStream(this.outputFile, {encoding: "utf8"}));
+        this.completeItems.forEach(f => {
+            let cityData : any[] = [];
+            if(f.city){
+                cityData = [f.city.name, f.city.lat, f.city.long];
+            }
+            const data = [f.label, f.status, f.lat, f.long].concat(cityData);
+            writer.write((<any> data));
+        });
+
+        writer.end();
     }
 
     public selectWhichFile(which : string) : void {
-
         if(which == "input"){
             dialog.showOpenDialog(null, {properties: ["openFile"]}, (result) => {
                 this.$rootScope.$applyAsync(() => {
-                    this.outputFile = result[0];
+                    this.inputFile = result[0];
                 });
             });
         }else if(which == "output"){
@@ -343,8 +444,8 @@ class JPCloseCityController extends BaseController {
                 });
             });
         }
-
     }
+
 }
 
 class JPPollenComponent implements angular.IComponentOptions {
@@ -352,6 +453,14 @@ class JPPollenComponent implements angular.IComponentOptions {
     public templateUrl: string = "templates/jpPollen.html";
     public controller : any = JPPollenController;
     public bindings: any = { };
+}
+
+interface Geocode {
+    label : string;
+    status : string;
+    lat? : number;
+    long? : number;
+    city? : City;
 }
 
 interface PollenData {
@@ -386,10 +495,6 @@ class JPPollenController extends BaseController {
 
     constructor($rootScope : angular.IRootScopeService){
         super($rootScope);
-    }
-
-    public $onInit() : void {
-
     }
 
     public onSubmit() : void {

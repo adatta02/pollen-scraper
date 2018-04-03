@@ -7,7 +7,8 @@
             <ul>
                 <li>This will accept an input list of Japanese zip codes and find the closest city for you.</li>
                 <li>The coordinates and names for cities are pulled from http://weathernews.jp/pollen/xml/obs.xml</li>
-                <li>And zip codes are geocoded (turned into coordinates) using OpenStreet map</li>
+                <li>And zip codes are geocoded (turned into coordinates) using OpenStreet Map</li>
+                <li><strong>Note:</strong> Requests are throttled at 1/sec per OpenStreet Maps requirements</li>
             </ul>
 
             <p>Geocoder data provided by OpenStreet Map.
@@ -21,7 +22,9 @@
                     <label for="inputFile">Input file</label>
                     <ul class="list-inline list-unstyled">
                         <li class="list-inline-item">
-                            <button class="btn btn-sm btn-dark" id="inputFile" ng-click="$ctrl.selectWhichFile('input')">Select File</button>
+                            <button type="button"
+                                    class="btn btn-sm btn-dark"
+                                    id="inputFile" ng-click="$ctrl.selectWhichFile('input')">Select File</button>
                         </li>
                         <li class="list-inline-item">
                             <span ng-bind="$ctrl.inputFile"></span>
@@ -36,7 +39,9 @@
                     <label for="file">Output file</label>
                     <ul class="list-inline list-unstyled">
                         <li class="list-inline-item">
-                            <button class="btn btn-sm btn-dark" id="file" ng-click="$ctrl.selectWhichFile('output')">Select File</button>
+                            <button type="button"
+                                    class="btn btn-sm btn-dark"
+                                    id="file" ng-click="$ctrl.selectWhichFile('output')">Select File</button>
                         </li>
                         <li class="list-inline-item">
                             <span ng-bind="$ctrl.outputFile"></span>
@@ -60,6 +65,38 @@
                 <h3>Something went wrong :(</h3>
                 <p ng-bind="$ctrl.displayError"></p>
             </div>
+
+            <table ng-show="$ctrl.numRequests" class="table table-sm table-progress">
+                <thead>
+                <tr>
+                    <td>
+                        <small>{{ $ctrl.requestsMade }} / {{ $ctrl.numRequests }}</small>
+                    </td>
+                    <td class="text-right">
+                        <button class="btn btn-sm btn-danger" ng-click="$ctrl.cancel()">Cancel</button>
+                    </td>
+                </tr>
+                <tr>
+                    <td  colspan="2">
+                        <div class="progress">
+                            <div class="progress-bar bg-info" ng-style="{width: $ctrl.overallProgress + '%'}"></div>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <th>Geocode Label</th>
+                    <th>City</th>
+                </tr>
+                </thead>
+                <tbody>
+                    <tr ng-repeat="geocode in $ctrl.completeItems">
+                        <td ng-bind="geocode.label"></td>
+                        <td>
+                            <span ng-if="geocode.city" ng-bind="geocode.city.displayName"></span>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
 
         </div>
     </div>

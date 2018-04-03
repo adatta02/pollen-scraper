@@ -25,6 +25,7 @@
     "typescript": "^2.6.2"
   },
   "dependencies": {
+    "@turf/turf": "^5.1.6",
     "@types/angular": "^1.6.43",
     "@types/async": "^2.0.48",
     "@types/cheerio": "^0.22.7",
@@ -40,6 +41,7 @@
     "csv-write-stream": "^2.0.0",
     "got": "^8.3.0",
     "lodash": "^4.17.5",
-    "moment": "^2.22.0"
+    "moment": "^2.22.0",
+    "turf": "^3.0.14"
   }
 }
