@@ -33,12 +33,17 @@ function bootstrap() {
                     url: '/usa-pollen',
                     component: 'usaPollenComponent',
                 })
+                .state('jp_closest_city', <ui.Ng1StateDeclaration> {
+                    url: '/jp-close-city',
+                    component: 'jpCloseCityComponent',
+                })
             ;
 
         })
         .component('homeComponent', new HomeComponent())
         .component('jpPollenComponent', new JPPollenComponent())
         .component('usaPollenComponent', new USAPollenComponent())
+        .component('jpCloseCityComponent', new JPCloseCityComponent())
     ;
 }
 
@@ -112,6 +117,33 @@ abstract class BaseController {
         });
     }
 
+    public getJPCities(): Promise<City[]> {
+        return new Promise<City[]>((resolve, reject) => {
+            got("http://weathernews.jp/pollen/xml/obs.xml")
+                .then(response => {
+                    const xml$ = cheerio.load(response.body);
+                    const names = xml$("name").text().split(",");
+                    const ids = xml$("id").text().split(",");
+                    const lats = xml$("lat").text().split(",");
+                    const lngs = xml$("lon").text().split(",");
+
+                    const paired = _.zip(names, ids, lats, lngs);
+                    const data = _.map(paired, f => {
+                        return {name: f[0],
+                            id: f[1],
+                            lat: parseFloat(f[2]),
+                            long: parseFloat(f[3]),
+                            displayName: f[0] + " (" + f[1] + ")",
+                            data: [], progressPercent: 0};
+                    });
+
+                    resolve(data);
+                })
+                .catch((err) => {
+                    reject(err);
+                });
+        });
+    }
 }
 
 interface ZipcodePoint {
@@ -270,6 +302,51 @@ class USAPollenController extends BaseController {
     }
 }
 
+class JPCloseCityComponent implements angular.IComponentOptions {
+    public transclude: boolean = true;
+    public templateUrl: string = "templates/jpCloseCity.html";
+    public controller : any = JPCloseCityController;
+    public bindings: any = { };
+}
+
+class JPCloseCityController extends BaseController {
+    static $inject = ["$rootScope"];
+    public $rootScope : angular.IRootScopeService;
+
+    public inputFile: string;
+    public outputFile : string;
+
+    constructor($rootScope : angular.IRootScopeService){
+        super($rootScope);
+    }
+
+    public onSubmit() : void {
+        if (!this.inputFile || !this.outputFile) {
+            this.setDisplayError("You must specify both an input and output file!");
+            return;
+        }
+
+    }
+
+    public selectWhichFile(which : string) : void {
+
+        if(which == "input"){
+            dialog.showOpenDialog(null, {properties: ["openFile"]}, (result) => {
+                this.$rootScope.$applyAsync(() => {
+                    this.outputFile = result[0];
+                });
+            });
+        }else if(which == "output"){
+            dialog.showSaveDialog(null, null, (result) => {
+                this.$rootScope.$applyAsync(() => {
+                    this.outputFile = result;
+                });
+            });
+        }
+
+    }
+}
+
 class JPPollenComponent implements angular.IComponentOptions {
     public transclude: boolean = true;
     public templateUrl: string = "templates/jpPollen.html";
@@ -329,7 +406,7 @@ class JPPollenController extends BaseController {
         this.setLoading(true);
         this.setDisplayError(null);
 
-        this.getCities().then(results => {
+        this.getJPCities().then(results => {
             const datePart = moment(this.startDate).format("YYYYMMDD");
             const url = `http://weathernews.jp/pollen/xml/${results[0].id}/${datePart}.xml`;
 
@@ -441,7 +518,7 @@ class JPPollenController extends BaseController {
 
         this.setLoading(true);
 
-        this.getCities()
+        this.getJPCities()
             .then(results => {
                 this.setLoading(false);
                 this.$rootScope.$applyAsync(() => {
@@ -453,34 +530,6 @@ class JPPollenController extends BaseController {
                 this.setLoading(false);
                 this.setDisplayError(err);
             });
-    }
-
-    public getCities(): Promise<City[]> {
-        return new Promise<City[]>((resolve, reject) => {
-            got("http://weathernews.jp/pollen/xml/obs.xml")
-                .then(response => {
-                    const xml$ = cheerio.load(response.body);
-                    const names = xml$("name").text().split(",");
-                    const ids = xml$("id").text().split(",");
-                    const lats = xml$("lat").text().split(",");
-                    const lngs = xml$("lon").text().split(",");
-
-                    const paired = _.zip(names, ids, lats, lngs);
-                    const data = _.map(paired, f => {
-                        return {name: f[0],
-                                id: f[1],
-                                lat: parseFloat(f[2]),
-                                long: parseFloat(f[3]),
-                                displayName: f[0] + " (" + f[1] + ")",
-                                data: [], progressPercent: 0};
-                    });
-
-                    resolve(data);
-                })
-                .catch((err) => {
-                    reject(err);
-                });
-        });
     }
 
     private writeData() : void {
