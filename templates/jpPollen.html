@@ -62,19 +62,23 @@
                 <table class="table table-striped table-hover">
                     <thead>
                         <tr>
-                            <td colspan="2" class="text-right">
+                            <td colspan="3" class="text-right">
                                 <button ng-click="$ctrl.downloadCSV()" class="btn btn-dark">Save As CSV</button>
                             </td>
                         </tr>
                         <tr>
                             <th>Id</th>
                             <th>Name</th>
+                            <th>Lat, Long</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr ng-repeat="city in $ctrl.cities">
                             <td ng-bind="city.id"></td>
                             <td ng-bind="city.name"></td>
+                            <td>
+                                <small ng-bind="city.lat"></small>, <small ng-bind="city.long"></small>
+                            </td>
                         </tr>
                     </tbody>
                 </table>

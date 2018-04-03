@@ -290,6 +290,8 @@ interface City {
     displayName : string;
     data : PollenData[];
     progressPercent : number;
+    lat : number;
+    long : number;
 }
 
 class JPPollenController extends BaseController {
@@ -458,10 +460,18 @@ class JPPollenController extends BaseController {
             got("http://weathernews.jp/pollen/xml/obs.xml")
                 .then(response => {
                     const xml$ = cheerio.load(response.body);
-                    const paired = _.zip(xml$("name").text().split(","),
-                                          xml$("id").text().split(","));
+                    const names = xml$("name").text().split(",");
+                    const ids = xml$("id").text().split(",");
+                    const lats = xml$("lat").text().split(",");
+                    const lngs = xml$("lon").text().split(",");
+
+                    const paired = _.zip(names, ids, lats, lngs);
                     const data = _.map(paired, f => {
-                        return {name: f[0], id: f[1], displayName: f[0] + " (" + f[1] + ")",
+                        return {name: f[0],
+                                id: f[1],
+                                lat: parseFloat(f[2]),
+                                long: parseFloat(f[3]),
+                                displayName: f[0] + " (" + f[1] + ")",
                                 data: [], progressPercent: 0};
                     });
 
@@ -493,9 +503,9 @@ class JPPollenController extends BaseController {
                 return;
             }
 
-            const writer : WriteStream = csv({ headers: ["Id", "Name"]});
+            const writer : WriteStream = csv({ headers: ["Id", "Name", "Lat", "Long"]});
             writer.pipe(fs.createWriteStream(result, {encoding: "utf8"}));
-            this.cities.map(f => [f.id, f.name]).forEach(f => {
+            this.cities.map(f => [f.id, f.name, f.lat, f.long]).forEach(f => {
                 writer.write((<any> f));
             });
             writer.end();
