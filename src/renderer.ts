@@ -256,7 +256,7 @@ class USAPollenController extends BaseController {
         }));
         const writer : WriteStream = csv({ headers: header });
 
-        writer.pipe(fs.createWriteStream(this.selectedOutputFile));
+        writer.pipe(fs.createWriteStream(this.selectedOutputFile, {encoding: "utf8"}));
         this.zipcodeData.forEach(f => {
             const data = [f.zipcode].concat(f.points.map(fx => fx.Index.toString()));
             writer.write(<any> data);
@@ -477,7 +477,7 @@ class JPPollenController extends BaseController {
         const header = ["Id", "Name"].concat(this.dateArray);
         const writer : WriteStream = csv({ headers: header });
 
-        writer.pipe(fs.createWriteStream(this.selectedOutputFile));
+        writer.pipe(fs.createWriteStream(this.selectedOutputFile, {encoding: "utf8"}));
         this.cities.forEach(f => {
             const sums = f.data.map(d => d.sum.toString());
             const data = [f.id, f.name].concat(sums);
@@ -494,7 +494,7 @@ class JPPollenController extends BaseController {
             }
 
             const writer : WriteStream = csv({ headers: ["Id", "Name"]});
-            writer.pipe(fs.createWriteStream(result));
+            writer.pipe(fs.createWriteStream(result, {encoding: "utf8"}));
             this.cities.map(f => [f.id, f.name]).forEach(f => {
                 writer.write((<any> f));
             });
