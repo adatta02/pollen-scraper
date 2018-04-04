@@ -7,16 +7,23 @@
             <ul>
                 <li>This will accept an input list of Japanese zip codes and find the closest city for you.</li>
                 <li>The coordinates and names for cities are pulled from http://weathernews.jp/pollen/xml/obs.xml</li>
-                <li>And zip codes are geocoded (turned into coordinates) using OpenStreet Map</li>
-                <li><strong>Note:</strong> Requests are throttled at 1/sec per OpenStreet Maps requirements</li>
+                <li>And zip codes are geocoded (turned into coordinates) using the Goole Maps API</li>
+                <li><strong>Note:</strong> Requests are throttled at 1/sec per Google Maps API requirements. There's also a 2,500 req/day limit.</li>
             </ul>
 
-            <p>Geocoder data provided by OpenStreet Map.
-                See <a href="https://operations.osmfoundation.org/policies/nominatim/" target="_blank">https://operations.osmfoundation.org/policies/nominatim/</a>
-                For usage notes, licensing, and restrictions.
-            </p>
+            <div class="form-group">
+                <label>Google Maps API Key:</label>
+                <textarea class="form-control" ng-model="$ctrl.gmapsKey"></textarea>
+                <small class="form-text text-muted">
+                    You can generate a key at <a href="https://developers.google.com/maps/documentation/javascript/get-api-key" target="_blank">https://developers.google.com/maps/documentation/javascript/get-api-key</a>
+                </small>
+            </div>
 
-            <form ng-submit="$ctrl.onSubmit()">
+            <div class="form-group">
+                <button ng-click="$ctrl.updateGmapsKey()" class="btn btn-default">Save Key</button>
+            </div>
+
+            <form ng-submit="$ctrl.onSubmit()" ng-if="$ctrl.gmapsKey">
 
                 <div class="form-group">
                     <label for="inputFile">Input file</label>
@@ -52,14 +59,18 @@
                 <div class="form-group">
                     <button class="btn btn-primary btn-block" type="submit">Fetch Data</button>
                 </div>
-
-                <div class="form-group">
-                    <hr />
-                    <a class="btn btn-sm btn-info" ui-sref="home">Back to launcher</a>
-                </div>
             </form>
+
+            <div class="form-group">
+                <hr />
+                <a class="btn btn-sm btn-info" ui-sref="home">Back to launcher</a>
+            </div>
         </div>
         <div class="col-sm-7">
+
+            <div ng-show="$ctrl.doneMsg" class="alert alert-success text-center">
+                <h4 ng-bind="$ctrl.doneMsg"></h4>
+            </div>
 
             <div ng-show="$ctrl.displayError" class="alert alert-danger text-center">
                 <h3>Something went wrong :(</h3>

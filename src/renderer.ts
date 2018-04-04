@@ -260,9 +260,9 @@ class USAPollenController extends BaseController {
             this.startIndex += this.numPerSlice;
             this.endIndex += this.numPerSlice;
 
+            this.syncData();
             if(this.startIndex <= this.numRequests){
                 this.processSlice();
-                this.syncData();
             }else{
                 this.doneMsg = "Run complete! Your file is at " + this.selectedOutputFile;
             }
@@ -316,6 +316,8 @@ class JPCloseCityController extends BaseController {
     static $inject = ["$rootScope"];
     public $rootScope : angular.IRootScopeService;
 
+    public gmapsKey : string;
+
     public inputFile: string;
     public outputFile : string;
 
@@ -327,6 +329,20 @@ class JPCloseCityController extends BaseController {
 
     constructor($rootScope : angular.IRootScopeService){
         super($rootScope);
+    }
+
+    public $onInit() : void {
+        if(fs.existsSync(__dirname + "/gmaps_key.txt")){
+            this.$rootScope.$applyAsync(() => {
+                this.gmapsKey = fs.readFileSync(__dirname + "/gmaps_key.txt", "utf8");
+            });
+        }
+    }
+
+    public updateGmapsKey() : void {
+        if(this.gmapsKey.length){
+            fs.writeFileSync(__dirname + "/gmaps_key.txt", this.gmapsKey);
+        }
     }
 
     public onSubmit() : void {
@@ -343,17 +359,21 @@ class JPCloseCityController extends BaseController {
             return;
         }
 
+        this.$rootScope.$applyAsync(() => {
+            this.doneMsg = null;
+        });
+
         this.setLoading(true);
         this.setDisplayError("");
 
+        this.completeItems = [];
+        this.geocodeItems = data.map(f => {return {label: f, status: "NEW"}});
+
         this.$rootScope.$applyAsync(() => {
-            this.numRequests = data.length;
+            this.numRequests = this.geocodeItems.length;
             this.requestsMade = 0;
             this.setProgress(0);
         });
-
-        this.completeItems = [];
-        this.geocodeItems = data.map(f => {return {label: f, status: "NEW"}});
 
         this.getJPCities()
             .then(results =>{
@@ -372,20 +392,24 @@ class JPCloseCityController extends BaseController {
     public processNext() : void {
         if(this.geocodeItems.length == 0){
             this.setLoading(false);
+            this.$rootScope.$applyAsync(() => {
+                this.doneMsg = "Run complete! Your file is at " + this.outputFile;
+            });
             return;
         }
 
         const targetItem = this.geocodeItems.pop();
-        const url = `https://nominatim.openstreetmap.org/search?q=${targetItem.label},Japan&format=json&limit=1`;
+        const url = `https://maps.googleapis.com/maps/api/geocode/json?key=${this.gmapsKey}&region=jp&address=${targetItem.label},Japan`;
 
-        got(url, {headers: {"User-Agent": "Pollen Data - https://github.com/adatta02/pollen-scraper"}})
+        got(url)
         .then(response => {
             const parsed = JSON.parse(response.body);
 
-            if(parsed.length){
-                targetItem.lat = parsed[0]["lat"];
-                targetItem.long = parsed[0]["lon"];
-                targetItem.status = "DONE";
+            targetItem.status = parsed["status"];
+
+            if(parsed["results"].length){
+                targetItem.lat = parsed["results"][0]["geometry"]["location"]["lat"];
+                targetItem.long = parsed["results"][0]["geometry"]["location"]["lng"];
 
                 const turfPoint = turf.point([targetItem.long, targetItem.lat]);
                 const nearPoint = turf.nearestPoint(turfPoint, this.cityFeatures);
@@ -393,13 +417,10 @@ class JPCloseCityController extends BaseController {
                 if(nearPoint){
                     targetItem.city = (<City> (<any> nearPoint.properties));
                 }
-            }else{
-                targetItem.status = "NO_DATA";
             }
 
             this.$rootScope.$applyAsync(() => {
                 this.completeItems.push(targetItem);
-                this.requestsMade += 1;
             });
 
             this.writeFile();
